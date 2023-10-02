@@ -72,11 +72,12 @@ int main(void) {
             exit(1);
         }
         // data process via mn_server socket
+        printf("msg to send to server:%s\n", client_msg);
         mn_to_server(fd, client_msg); // send data via new socket
-        char *server_msg;
+        char *server_msg = NULL;
         server_to_mn(fd, &server_msg);// receive data from socket
         // send data via old socket
-        mn_to_client(client_fd, client_msg);
+        mn_to_client(client_fd, server_msg);
         printf("finished a client_fd");
         if (shutdown(client_fd, SHUT_RDWR) == -1) {
             perror("shutdown failed");
@@ -135,6 +136,31 @@ void mn_to_client(int fd, const char *data) {
 
 void process_data(char **data) {
     // TODO: replace the host
+    char *data_ptr = *data;
+    char *data_backup = *data;
+    char *host = "$test.com";   //TODO: read in from conf
+    char *needle = "Host: ";
+    char *pos_host = strstr(*data, needle);
+    if (pos_host == NULL) {
+        printf("process_data;no host found\n");
+        return;
+    }
+    char *pos_host_end = strstr(pos_host, "\r\n");
+    if (pos_host_end == NULL) {
+        printf("process_data;no host end found\n");
+        return;
+    }
+    size_t new_len = strlen(host);
+    size_t str_len = strlen(data_ptr);
+    size_t bstr_len = str_len + (new_len - (pos_host_end - pos_host - strlen(needle))) + 1; // 计算转换后的字符串长度
+    char *bstr = (char *) malloc(bstr_len); // 动态分配转换缓冲区
+    memset(bstr, 0, bstr_len);
+    strncpy(bstr, data_ptr, pos_host - data_ptr);
+    strcat(bstr, needle);
+    strcat(bstr, host);
+    strcat(bstr, pos_host_end);
+    *data = bstr;
+    free(data_backup);
 }
 
 void server_to_mn(int fd, char **data) {
