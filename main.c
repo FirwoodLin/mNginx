@@ -13,7 +13,7 @@ void process_data(char **);
 
 int is_static_request(char *);
 
-void static_file(char **, char *);
+void static_file(int, char **, char *);
 
 char *read_file(char *, long *);
 
@@ -57,14 +57,14 @@ int main(void) {
         /*  process static request*/
         if (is_static_request(client_msg)) {
             char *data = NULL;
-            static_file(&data, client_msg);  // 生成响应报文 存储到 data
-            if (data == NULL) {
-                // 返回报错
-                http_not_found(client_fd);
-                continue;
-            }
-            mn_to_client(client_fd, data);// 将 data 返回
-            printf("finished a client_fd");
+            static_file(client_fd, &data, client_msg);  // 生成响应报文 并返回
+//            if (data == NULL) {
+//                // 返回报错
+//                http_not_found(client_fd);
+//                continue;
+//            }
+//            mn_to_client(client_fd, data);// 将 data 返回
+            printf("finished a client_fd %d\n", client_fd);
             if (shutdown(client_fd, SHUT_RDWR) == -1) {
                 perror("shutdown failed");
             }
@@ -96,7 +96,7 @@ int main(void) {
         char *server_msg = NULL;
         server_to_mn(fd, &server_msg);// receive data from socket
         // send data via old socket
-        mn_to_client(client_fd, server_msg);
+        mn_to_client(client_fd, server_msg, strlen(server_msg));
         printf("finished a client_fd");
         if (shutdown(client_fd, SHUT_RDWR) == -1) {
             perror("shutdown failed");
@@ -151,7 +151,7 @@ int is_static_request(char *request) {
 }
 
 // data: store the file; request: pass the request
-void static_file(char **data, char *request) {
+void static_file(int fd, char **data, char *request) {
     char location[] = "/static";
     char root[] = "./static";
     char index[] = "./static/index.html";    // default file
@@ -166,16 +166,17 @@ void static_file(char **data, char *request) {
     }
     char *pos_end = strstr(pos, " HTTP");
     size_t file_path_len = pos_end - pos - head_len - 1;
-    char *file_path = (char *) malloc(file_path_len);
+    char *file_path = (char *) malloc(file_path_len + 1);
+    memset(file_path, 0x00, file_path_len + 1);
     strncpy(file_path, pos + head_len + 1, file_path_len);
     long header_file_length = 0;// store the file length==content length
     char *target_file_content = read_file(file_path, &header_file_length);
     if (target_file_content == NULL) {
         // specific file not found,return index
-        printf("file:%s not found\n", file_path);
+        printf("specific file:%s not found\n", file_path);
         char *buffer = read_file(index, &header_file_length);
         if (buffer == NULL) {
-            printf("read file error, index\n");
+            printf("index file: read file error, \n");
             return;
         }
         *data = buffer;
@@ -183,12 +184,12 @@ void static_file(char **data, char *request) {
     }
     // return specific file
     *data = target_file_content;    // 获取了文件的内容，需要补充首部信息
-    // 拼装首部信息
-    char *header_mtime;// 当前时间
-    mTime(file_path, &header_mtime);
-    char *header_time;// 修改时间
+    // 收集首部信息
+    char *header_mtime = NULL;// 当前时间
+    mTime(file_path, &header_mtime);// TODO: 时间年份不正确
+    char *header_time = NULL;// 修改时间
     get_time(&header_time);
-    char *header_content_type;// 文件类型
+    char *header_content_type = NULL;// 文件类型
     get_mime_type(file_path, &header_content_type);
     const char *header_formatter = get_header_formatter(file_path);
     unsigned long header_length = (strlen(header_formatter) + strlen(header_mtime) + strlen(header_time) + 10);
@@ -196,12 +197,14 @@ void static_file(char **data, char *request) {
     memset(header, 0x00, header_length);
     // 组成报文首部
     sprintf(header, header_formatter, header_file_length, header_time, header_mtime);
-    // 组成完整报文
-    char *response = (char *) malloc(header_length + header_file_length);
-    sprintf(response, "%s%s", header, target_file_content);
-    free(*data);
-    *data = (char *) malloc(sizeof(response));
-    strcpy(*data, response);
+    mn_to_client(fd, header, strlen(header));
+    // 分批发送数据
+    mn_to_client(fd, target_file_content, header_file_length);
+//    char *response = (char *) malloc(header_length + header_file_length);
+//    sprintf(response, "%s%s", header, target_file_content);
+//    free(*data);
+//    *data = (char *) malloc(sizeof(response));
+//    strcpy(*data, response);
 }
 
 char *read_file(char *file_path, long *file_length) {
@@ -211,7 +214,17 @@ char *read_file(char *file_path, long *file_length) {
     memset(real_path, 0x00, sizeof(real_path));
     strcpy(real_path, "./static/");
     strcat(real_path, file_path);
-    FILE *f = fopen(real_path, "r");
+    /*===*/
+//    char *buffer1;
+//    if((buffer1 = getcwd(NULL,0))==NULL){
+//        perror("getcwd error");
+//    }
+//    else{
+//        printf("%s\n",buffer1);
+//        free(buffer1);
+//    }
+    /*===*/
+    FILE *f = fopen(real_path, "rb");
     if (f == NULL) {
         printf("read_file;file not found:%s\n", file_path);
     }
@@ -223,7 +236,8 @@ char *read_file(char *file_path, long *file_length) {
         printf("calced file length:%ld\n", length);
         // return to beginning
         fseek(f, 0, SEEK_SET);
-        buffer = (char *) malloc(1024);
+        buffer = (char *) malloc(length);
+        memset(buffer, 0x00, length);
         if (buffer) {
             fread(buffer, 1, length, f);
         }
@@ -231,6 +245,8 @@ char *read_file(char *file_path, long *file_length) {
     }
     if (buffer == NULL) {
         printf("read_file-read file error\n");
+        fclose(f);
+
         return NULL;
     }
     fclose(f);

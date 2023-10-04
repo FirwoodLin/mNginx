@@ -8,4 +8,7 @@ add_executable(mNginx
         header_edit.h
         header_edit.c
         data_trans.h
-        data_trans.c)
+        data_trans.c
+        http_response.c
+        http_response.h
+)

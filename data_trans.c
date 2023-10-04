@@ -33,8 +33,6 @@ void client_to_mn(int fd, char **received_data) {
 }
 
 void mn_to_server(int fd, const char *data) {
-
-
     // 发送数据
     ssize_t num_bytes_sent = send(fd, data, strlen(data), 0);
     if (num_bytes_sent == -1) {
@@ -44,10 +42,11 @@ void mn_to_server(int fd, const char *data) {
     printf("Sent %zd bytes to the server.\n", num_bytes_sent);
 }
 
-void mn_to_client(int fd, const char *data) {
+void mn_to_client(int fd, const char *data, ssize_t n) {
+    // n is the length of data
     printf("mn_to_client;data to write:\n%s\n", data);
     ssize_t ret;
-    ret = write(fd, data, strlen(data));
+    ret = write(fd, data, n);
     if (ret < 0) {
         printf("mn_to_client;write error\n");
     }

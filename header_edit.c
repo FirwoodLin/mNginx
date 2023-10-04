@@ -103,6 +103,7 @@ header_type get_mime_type(char *filepath, char **data) {
     char *extension = strrchr(filepath, '.');
     for (int i = 0; i < sizeof(mime_types) / sizeof(mime_map); i++) {
         if (strcmp(extension, mime_types[i].extention) == 0) {
+            *data = (char *) malloc(sizeof mime_types[i].mime_type);
             strcpy(*data, mime_types[i].mime_type);
             return i;
         }
