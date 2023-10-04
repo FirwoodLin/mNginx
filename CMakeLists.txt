@@ -4,11 +4,15 @@ project(mNginx C)
 set(CMAKE_C_STANDARD 11)
 
 add_executable(mNginx
-        main.c
-        header_edit.h
-        header_edit.c
-        data_trans.h
-        data_trans.c
-        http_response.c
-        http_response.h
+        src/main.c
+        src/header_edit.h
+        src/header_edit.c
+        src/data_trans.h
+        src/data_trans.c
+        src/http_response.c
+        src/http_response.h
+        src/config.c
+        src/config.h
+        src/proxy.c
+        src/proxy.h
 )

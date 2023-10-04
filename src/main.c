@@ -200,11 +200,6 @@ void static_file(int fd, char **data, char *request) {
     mn_to_client(fd, header, strlen(header));
     // 分批发送数据
     mn_to_client(fd, target_file_content, header_file_length);
-//    char *response = (char *) malloc(header_length + header_file_length);
-//    sprintf(response, "%s%s", header, target_file_content);
-//    free(*data);
-//    *data = (char *) malloc(sizeof(response));
-//    strcpy(*data, response);
 }
 
 char *read_file(char *file_path, long *file_length) {
@@ -214,16 +209,6 @@ char *read_file(char *file_path, long *file_length) {
     memset(real_path, 0x00, sizeof(real_path));
     strcpy(real_path, "./static/");
     strcat(real_path, file_path);
-    /*===*/
-//    char *buffer1;
-//    if((buffer1 = getcwd(NULL,0))==NULL){
-//        perror("getcwd error");
-//    }
-//    else{
-//        printf("%s\n",buffer1);
-//        free(buffer1);
-//    }
-    /*===*/
     FILE *f = fopen(real_path, "rb");
     if (f == NULL) {
         printf("read_file;file not found:%s\n", file_path);
@@ -241,7 +226,6 @@ char *read_file(char *file_path, long *file_length) {
         if (buffer) {
             fread(buffer, 1, length, f);
         }
-        // fclose(f);
     }
     if (buffer == NULL) {
         printf("read_file-read file error\n");
