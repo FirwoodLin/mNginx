@@ -22,13 +22,15 @@ typedef struct request_header {
     char *host;
     char *user_agent;
     char *accept;
+    unsigned port;
+
 } request;
 
 void main_process(server *server_conf);
 
 void process_data(char **);
 
-int is_static_request(char *);
+//int is_static_request(char *);
 
 void static_file(int, char **, char *);
 
@@ -37,5 +39,7 @@ char *read_file(char *, long *);
 location *find_best_match_location(request *req, server *server_conf);
 
 request *parse_target(char *client_msg);
+
+void parse_url(char *req_url, char **req_server_name, char **req_loc);
 
 #endif //MNGINX_PROXY_H

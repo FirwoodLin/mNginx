@@ -1,3 +1,5 @@
+# 请求示例
+
 client -> mNginx
 
 ```text
@@ -6,8 +8,7 @@ Request Method: GET
 \r\n
 Request Header:
 Host: localhost
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Wisn64;
-x64)AppleWebKit/537.36 (KHTML,like Gecko)Chrome/77.0.3865.90 Safari/537.36
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.2045.40
 Accept: */*
 \r\n
 \r\n
@@ -16,16 +17,32 @@ Accept: */*
 mNginx -> real server
 
 ```text
-Request URL: http: 127.0.0.1:7000/api/v1/healthy
+Request URL: http://127.0.0.1:7000/api/v1/healthy
 Request Method: GET
 \r\n
 Request Header:
 Host: test.com
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64;x64)AppleWebKit/537.36 (KHTML,like Gecko)Chrome/77.0.3865.90 Safari/537.36
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.2045.40
 Accept: */*
 \r\n
 \r\n
 ```
+
+mNginx -> real server -- 注释版
+
+```text
+Request URL: http://127.0.0.1:7000/api/v1/healthy ## 从 proxy_pass 获取
+Request Method: GET
+\r\n
+Request Header:
+Host: test.com  ## 从 proxy_set_header 获取
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.2045.40
+Accept: */*
+\r\n
+\r\n
+```
+
+# 配置信息
 
 mNginx 配置
 

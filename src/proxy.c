@@ -35,7 +35,6 @@ void main_process(server *server_conf) {
         perror("bind failed");
         close(server_fd);
         exit(1);
-
     }
     if (listen(server_fd, 5) == -1) {
         perror("listen failed");
@@ -58,10 +57,11 @@ void main_process(server *server_conf) {
         printf("client_to_mn finished\n");
         /*parse the client msg, get target loc*/
         request *req = parse_target(client_msg);
+        req->port = server_conf->listen;    // 辅助判断所匹配的server
         /*find best match location, get the ptr to loc*/
         location *best_match_loc = find_best_match_location(req, server_conf);
         /*  process static request*/
-        if (is_static_request(client_msg)) {
+        if (best_match_loc->is_static == 1) {
             char *data = NULL;
             static_file(client_fd, &data, client_msg);  // 生成响应报文 并返回
             printf("finished a client_fd %d\n", client_fd);
@@ -134,19 +134,19 @@ void process_data(char **client_msg) {
     free(data_backup);
 }
 
-int is_static_request(char *request) {
-    char *location = "/static";
-    size_t head_len = strlen("GET ") + strlen(location);
-    char *needle = (char *) malloc(head_len);
-    strcpy(needle, "GET ");
-    strcat(needle, location);
-    char *pos = strstr(request, needle);
-    if (pos == NULL) {
-        printf("it is not a static file request\n");
-        return 0;
-    }
-    return 1;
-}
+//int is_static_request(char *request) {
+//    char *location = "/static";
+//    size_t head_len = strlen("GET ") + strlen(location);
+//    char *needle = (char *) malloc(head_len);
+//    strcpy(needle, "GET ");
+//    strcat(needle, location);
+//    char *pos = strstr(request, needle);
+//    if (pos == NULL) {
+//        printf("it is not a static file request\n");
+//        return 0;
+//    }
+//    return 1;
+//}
 
 /// \brief 处理静态请求
 /// \param fd
@@ -293,5 +293,47 @@ request *parse_target(char *client_msg) {
 }
 
 location *find_best_match_location(request *req, server *server_conf) {
+    char *req_url = req->request_url;
+    char *req_server_name, *req_loc;
+    req_server_name = req_loc = NULL;
+    parse_url(req_url, &req_server_name, &req_loc);
+    printf("find_best_match_location begin:req_server_name:%s,req_loc:%s\n", req_server_name, req_loc);
+    for (server *server_ptr = server_conf; server_ptr != NULL; server_ptr = server_ptr->next) {
+        if (strcmp(server_ptr->server_name, req_server_name) == 0 && server_ptr->listen == req->port) {
+            // found the server; name and port must match
+            printf("find:server_name:%s\n", server_ptr->server_name);
+            for (location *loc_ptr = server_ptr->first_loc; loc_ptr != NULL; loc_ptr = loc_ptr->next) {
+                if (strcmp(loc_ptr->pattern, req_loc) == 0) {
+                    // found the location
+                    printf("find:loc:%s\n", loc_ptr->pattern);
+                    return loc_ptr;
+                }
+            }
+        }
+    }
+    printf("best match not found:%s\n", req_loc);
     return NULL;
+}
+
+void parse_url(char *req_url, char **req_server_name, char **req_loc) {
+    char *pos = strstr(req_url, "://");
+    if (pos == NULL) {
+        printf("get_server_name;no protocol found\n");
+        return;
+    }
+    char *pos_end = strstr(pos + 3, "/");
+    if (pos_end == NULL) {
+        printf("get_server_name;no path found\n");
+        return;
+    }
+    size_t server_name_len = pos_end - pos - 3;// 3==://
+    char *server_name = (char *) malloc(server_name_len + 1);
+    memset(server_name, 0x00, server_name_len + 1);
+    strncpy(server_name, pos + 3, server_name_len);
+    *req_server_name = server_name;
+    size_t loc_len = strlen(req_url) - (pos_end - req_url);
+    char *loc = (char *) malloc(loc_len + 1);
+    memset(loc, 0x00, loc_len + 1);
+    strncpy(loc, pos_end, loc_len);
+    *req_loc = loc;
 }
