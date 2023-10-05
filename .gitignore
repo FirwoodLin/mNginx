@@ -56,3 +56,7 @@ cmake-build-debug/
 
 # IDE conf
 .vscode/
+
+runtime_data/
+
+toolkit_test/

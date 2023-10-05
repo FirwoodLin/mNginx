@@ -8,28 +8,67 @@
 #include <string.h>
 #include <unistd.h>
 
-void client_to_mn(int fd, char **received_data) {
-    // note: use char ** instead of char *
-    // TODO: what if the data pack is larger than 1024 byte?
-    // TODO: put multipart data together
-//    for(;;) {
-    printf("begin fd:%d\n", fd);
-    char buf[1024];
-    memset(buf, 0x00, sizeof(buf));
-    ssize_t ret = read(fd, buf, 1023);
-    *received_data = (char *) malloc(1024);
-    strcpy(*received_data, buf);
-    if (ret == 0) {
-        return;
-//            break;
-    }
-    if (ret == -1) {
-        perror("read");
-        return;
-    }
-    printf("buf size:%zd\n", ret);
-    printf("%s\n", buf);
+//void client_to_mn(int fd, char **received_data) {
+//    // note: use char ** instead of char *
+//    // TODO: what if the data pack is larger than 1024 byte?
+//    // TODO: put multipart data together
+////    for(;;) {
+//    printf("begin fd:%d\n", fd);
+//    char buf[1024];
+//    memset(buf, 0x00, sizeof(buf));
+//    ssize_t ret = read(fd, buf, 1023);
+//    *received_data = (char *) malloc(ret);
+//    memcpy(*received_data, buf, ret);
+//    if (ret == 0) {
+//        return;
+////            break;
 //    }
+//    if (ret == -1) {
+//        perror("read");
+//        return;
+//    }
+//    printf("buf size:%zd\n", ret);
+//    printf("%s\n", buf);
+////    }
+//}
+void client_to_mn(int fd, char **received_data) {
+    // 初始化动态缓冲区
+    size_t buffer_size = 1024;  // 初始缓冲区大小
+    size_t data_length = 0;     // 已接收数据的长度
+    *received_data = (char *) malloc(buffer_size);
+    if (*received_data == NULL) {
+        perror("malloc");
+        return;
+    }
+    // 接收数据
+    printf("client_to_mn begin fd:%d\n", fd);
+    for (;;) {
+        char buf[1024];
+        ssize_t ret = read(fd, buf, sizeof(buf));
+        if (ret == 0) {
+            break;  // 读取完毕，退出循环
+        }
+        if (ret == -1) {
+            perror("read");
+            return;
+        }
+        // 检查是否需要扩展缓冲区大小
+        if (data_length + ret > buffer_size) {
+            buffer_size *= 2;  // 扩展为当前大小的两倍
+            char *new_buffer = (char *) realloc(*received_data, buffer_size);
+            if (new_buffer == NULL) {
+                perror("realloc");
+                free(*received_data);
+                *received_data = NULL;
+                return;
+            }
+            *received_data = new_buffer;
+        }
+        // 将读取的数据拷贝到缓冲区
+        memcpy(*received_data + data_length, buf, ret);
+        data_length += ret;
+        printf("fd %d接收数据总长:%zd\n", fd, ret);
+    }
 }
 
 void mn_to_server(int fd, const char *data) {

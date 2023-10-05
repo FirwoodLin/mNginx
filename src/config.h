@@ -18,6 +18,7 @@ typedef struct item_struct {
 typedef struct location_struct {
     rule_type rule;
     char *pattern;
+    int is_static;
     // dynamic
     item *proxy_set_header; // several headers, e.g. HOST
     char *proxy_pass_host;
@@ -44,28 +45,25 @@ char *StrStrip(char *s);
 
 void read_in_conf();
 
-void alloc_cpy(char *dest, char *src);
-
-unsigned int BKDRHash(char *str);
 
 // const var
 // hash result of given key
 // hash function mod
-const int H_MOD = 41;
-const int H_server = 4;
-const int H_location = 1;
+#define H_MOD  41
+#define H_server 4
+#define H_location 1
 // server
-const int H_listen = 14;
-const int H_server_name = 2;
-const int H_error_log = 24;
-const int H_access_log = 12;
+#define H_listen 14
+#define H_server_name 2
+#define H_error_log 24
+#define H_access_log 12
 // location
-const int H_rule = 32;  // 匹配规则
-const int H_pattern = 10;
+#define H_rule 32 // 匹配规
+#define H_pattern 10
 // location - dynamic
-const int H_proxy_set_header = 16;
-const int H_proxy_pass = 7;
+#define H_proxy_set_header 16
+#define H_proxy_pass 7
 // location - static
-const int H_root = 15;
-const int H_index = 34;
+#define H_root 15
+#define H_index 34
 #endif //MNGINX_CONFIG_H
