@@ -22,14 +22,18 @@ typedef struct request_header {
     char *host;
     char *user_agent;
     char *accept;
-    int port;
+    unsigned port;
     char *server_name;
+    char *location;
 } request;
 
 void main_process(server *server_conf);
 
-void process_data(char **);
+int replace_header(char **msg, char *key, char *val);
 
+void process_data(char **, server *, location *);
+
+void replace_server_name(char **msg, char *new_server_name);
 int is_static_request(char *);
 
 //void static_file(int, char **, char *);
