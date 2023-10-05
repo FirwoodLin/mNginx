@@ -63,7 +63,7 @@ void main_process(server *server_conf) {
         /*  process static request*/
         if (is_static_request(client_msg)) {
             char *data = NULL;
-            static_file(client_fd, &data, client_msg);  // 生成响应报文 并返回
+            static_file(client_fd, best_match_loc, client_msg);  // 生成响应报文 并返回
             printf("finished a client_fd %d\n", client_fd);
             if (shutdown(client_fd, SHUT_RDWR) == -1) {
                 perror("shutdown failed");
@@ -152,10 +152,12 @@ int is_static_request(char *request) {
 /// \param fd
 /// \param data
 /// \param request
-void static_file(int fd, char **data, char *request) {
-    char location[] = "/static";
-    char root[] = "./static";
-    char index[] = "./static/index.html";    // default file
+void static_file(int fd, location *m_loc, request *req) {
+//    char location[] = "/static";
+//    char root[] = "./static";
+//    char index[] = "./static/index.html";    // default file
+    char *index = m_loc->index;
+    char *req_loc = req->request_url
     size_t head_len = strlen("GET ") + strlen(location);
     char *needle = (char *) malloc(head_len);
     strcpy(needle, "GET ");
@@ -292,6 +294,33 @@ request *parse_target(char *client_msg) {
     return req;
 }
 
+
+void parse_url(char *req_url, char **req_server_name, char **req_loc) {
+    char *pos = strstr(req_url, "://");
+    if (pos == NULL) {
+        printf("get_server_name;no protocol found\n");
+        return;
+    }
+    char *pos_end = strstr(pos + 3, "/");
+    if (pos_end == NULL) {
+        printf("get_server_name;no path found\n");
+        return;
+    }
+    size_t server_name_len = pos_end - pos - 3;// 3==://
+    char *server_name = (char *) malloc(server_name_len + 1);
+    memset(server_name, 0x00, server_name_len + 1);
+    strncpy(server_name, pos + 3, server_name_len);
+    *req_server_name = server_name;
+    size_t loc_len = strlen(req_url) - (pos_end - req_url);
+    char *loc = (char *) malloc(loc_len + 1);
+    memset(loc, 0x00, loc_len + 1);
+    strncpy(loc, pos_end, loc_len);
+    *req_loc = loc;
+}
+
 location *find_best_match_location(request *req, server *server_conf) {
+    for (server *server_ptr = server_conf; server_ptr != NULL; server_ptr = server_ptr->next) {
+        if (strcmp(server_ptr->server_name, req->request_url))
+    }
     return NULL;
 }
