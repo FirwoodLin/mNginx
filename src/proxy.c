@@ -15,6 +15,7 @@
 #include "http_response.h"
 #include "config.h"
 #include "util.h"
+#include <pthread.h>
 
 #define MAX_KV_LEN 127
 
@@ -52,56 +53,70 @@ void main_process(server *server_conf) {
             exit(1);
 
         }
-        // 从 client_fd 中读取数据 生成 client_msg
-        char *client_msg = NULL;    // data that comes from client
-        client_to_mn(client_fd, &client_msg);
-        printf("client_to_mn finished\n");
-        /*parse the client msg, get target loc*/
-        request *req = parse_target(client_msg);
-        /*find best match location, get the ptr to loc*/
-        req->port = server_conf->listen;
-        location *best_match_loc = find_best_match_location(req, server_conf);
-        /*  process static request*/
-        if (best_match_loc->is_static == 1) {
-            static_file(client_fd, best_match_loc, req);  // 生成响应报文 并返回
-            printf("finished a client_fd %d\n", client_fd);
-            if (shutdown(client_fd, SHUT_RDWR) == -1) {
-                perror("shutdown failed");
-            }
+        // 多线程处理客户端请求
+
+        pthread_t tid;
+        hd_arg ha = {client_fd, server_conf};
+        if (pthread_create(&tid, NULL, handle_client, &ha) != 0) {
+            perror("pthread_create failed");
             close(client_fd);
             continue;
         }
-        /*  process dynamic request*/
-        process_data(&client_msg, server_conf, best_match_loc);
-        char *proxy_pass_ip = server_conf->first_loc->proxy_pass_host;
-        int proxy_pass_port = server_conf->first_loc->proxy_pass_port;
-        int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); // 目标服务器的 fd
-        if (fd == -1) {
-            perror("socket");
-            exit(1);
-        }
-        struct sockaddr_in dest_addr;
-        dest_addr.sin_family = AF_INET;
-        dest_addr.sin_addr.s_addr = inet_addr(proxy_pass_ip);
-        dest_addr.sin_port = htons(proxy_pass_port);
-        if (connect(fd, (struct sockaddr *) &dest_addr, sizeof dest_addr) < 0) {
-            perror("connect");
-            exit(1);
-        }
-        // data process via mn_server socket
-        printf("len msg to send to server:%zd\n", strlen(client_msg));
-        mn_to_server(fd, client_msg); // send data via new socket
-        char *server_msg = NULL;
-        server_to_mn(fd, &server_msg);// receive data from socket
-        // send data via old socket
-        mn_to_client(client_fd, server_msg, strlen(server_msg));
-        printf("finished a client_fd");
-        if (shutdown(client_fd, SHUT_RDWR) == -1) {
-            perror("shutdown failed");
-        }
-        close(client_fd);
+        pthread_detach(tid);
     }
     close(server_fd);
+}
+
+void *handle_client(void *arg) {
+    hd_arg *ha = (hd_arg *) arg;
+    int client_fd = ha->fd;
+    server *server_conf = ha->server_conf;
+    // 从 client_fd 中读取数据 生成 client_msg
+    char *client_msg = NULL;    // data that comes from client
+    client_to_mn(client_fd, &client_msg);
+    printf("client_to_mn finished\n");
+    /*parse the client msg, get target loc*/
+    request *req = parse_target(client_msg);
+    /*find best match location, get the ptr to loc*/
+    req->port = server_conf->listen;
+    location *best_match_loc = find_best_match_location(req, server_conf);
+    /*  process static request*/
+    if (best_match_loc->is_static == 1) {
+        static_file(client_fd, best_match_loc, req);  // 生成响应报文 并返回
+        printf("finished a client_fd %d\n", client_fd);
+        close(client_fd);
+        return NULL;
+//        continue;
+    }
+    /*  process dynamic request*/
+    process_data(&client_msg, server_conf, best_match_loc);
+    char *proxy_pass_ip = server_conf->first_loc->proxy_pass_host;
+    int proxy_pass_port = server_conf->first_loc->proxy_pass_port;
+    int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); // 目标服务器的 fd
+    if (fd == -1) {
+        perror("socket");
+        exit(1);
+    }
+    struct sockaddr_in dest_addr;
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_addr.s_addr = inet_addr(proxy_pass_ip);
+    dest_addr.sin_port = htons(proxy_pass_port);
+    if (connect(fd, (struct sockaddr *) &dest_addr, sizeof dest_addr) < 0) {
+        perror("connect");
+        exit(1);
+    }
+    // data process via mn_server socket
+    printf("len msg to send to server:%zd\n", strlen(client_msg));
+    mn_to_server(fd, client_msg); // send data via new socket
+    char *server_msg = NULL;
+    server_to_mn(fd, &server_msg);// receive data from socket
+    // send data via old socket
+    mn_to_client(client_fd, server_msg, strlen(server_msg));
+    printf("finished a client_fd");
+    if (shutdown(client_fd, SHUT_RDWR) == -1) {
+        perror("shutdown failed");
+    }
+    return NULL;
 }
 
 /// \b 使用 strrpc 重构版本的头部数据处理

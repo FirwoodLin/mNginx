@@ -5,6 +5,15 @@
 #ifndef MNGINX_UTIL_H
 #define MNGINX_UTIL_H
 
+#include "log.h"
+#include <string.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+FILE *open_file(const char *path, int flag, const char *mode);
+
 unsigned int BKDRHash(char *str);
 
 void alloc_cpy(char **dest, char *src);

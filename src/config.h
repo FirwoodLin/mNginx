@@ -4,17 +4,23 @@
 
 #ifndef MNGINX_CONFIG_H
 #define MNGINX_CONFIG_H
-// location rule
-typedef enum {
+
+#include <stdio.h>
+
+/// \b location 匹配规则
+typedef enum rule_enum {
     RULE_DEFAULT,    // .
     RULE_EXACT,      // =
     RULE_PREFIX,     // ~^
     RULE_REGEX       // ~
 } rule_type;
+/// \b item 用于存储 proxy_set_header 的 key 和 value
 typedef struct item_struct {
     char *key;
     char *value;
 } item;
+/// \b location 用于存储 location 配置
+/// \param rule 匹配规则 TODO 使用规则进行匹配
 typedef struct location_struct {
     rule_type rule;
     char *pattern;
@@ -28,28 +34,32 @@ typedef struct location_struct {
     char *index;
     struct location_struct *next;// use link table to store locations
 } location;
-
+/// \b server 用于存储 server 配置
 typedef struct server_struct {
+    /* read from conf */
     int listen;
     char *server_name;
     char *error_log;
     char *access_log;
     location *first_loc; // several locations
+    /* manually added */
     struct server_struct *next;// use link table to store servers
+    FILE *fe;// error log file ptr
+    FILE *fa;// access log file ptr
 } server;
-// global var
+
+/* global var */
 extern server *server_head;
 
-// func
+/*  func declaration   */
 char *StrStrip(char *s);
 
 void read_in_conf();
 
-
-// const var
-// hash result of given key
+/* MACRO  */
 // hash function mod
 #define H_MOD  41
+// hash result of given key
 #define H_server 4
 #define H_location 1
 // server
@@ -66,4 +76,5 @@ void read_in_conf();
 // location - static
 #define H_root 15
 #define H_index 34
+
 #endif //MNGINX_CONFIG_H

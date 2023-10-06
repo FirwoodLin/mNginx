@@ -4,6 +4,7 @@
 
 #include "config.h"
 #include "util.h"
+#include "log.h"
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -97,12 +98,23 @@ void read_in_conf() {
                     break;
                 case H_error_log:
                     alloc_cpy(&server_last->error_log, b);
+                    FILE *fe = open_file(b, R_OK, "a+");
+                    if (fe == NULL) {
+                        log_error(DefaultCat, DefaultServer, "error_log file %s: open failed", b);
+                    }
+                    server_last->fe = fe;
                     break;
                 case H_access_log:
                     alloc_cpy(&server_last->access_log, b);
+                    FILE *fa = open_file(b, R_OK, "a+");
+                    if (fa == NULL) {
+                        log_error(DefaultCat, DefaultServer, "access_log file %s: open failed", b);
+                    }
+                    server_last->fa = fa;
                     break;
                 default:
-                    printf("line %d server tag has no field\n", line_count);
+//                    printf("line %d server tag has no field\n", line_count);
+                    log_warn(DefaultCat, DefaultServer, "line %d server tag(%s) has no field\n", line_count, a);
             }
         } else if (flag_location_inputting && hash_val != H_location) {
             switch (hash_val) {

@@ -12,9 +12,10 @@
 #include "http_response.h"
 #include "config.h"
 #include "proxy.h"
-
+#include "log.h"
 #define MAX_THREADS 100
 int main(void) {
+    init_log();
     read_in_conf();
     // bind & listen; mn as a server
     pthread_t threads[MAX_THREADS];

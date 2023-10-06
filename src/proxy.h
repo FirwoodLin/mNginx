@@ -26,7 +26,13 @@ typedef struct request_header {
     char *server_name;
     char *location;
 } request;
+typedef struct hd_arg_struct {
+    // handle_client arg
+    int fd;
+    server *server_conf;
+} hd_arg;
 
+void *handle_client(void *arg);
 void main_process(server *server_conf);
 
 int replace_header(char **msg, char *key, char *val);
