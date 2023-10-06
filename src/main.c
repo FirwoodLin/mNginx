@@ -13,7 +13,9 @@
 #include "config.h"
 #include "proxy.h"
 #include "log.h"
+
 #define MAX_THREADS 100
+
 int main(void) {
     init_log();
     log_debug(DefaultCat, DefaultServer, "start to read in conf");
@@ -24,7 +26,11 @@ int main(void) {
     pthread_t threads[MAX_THREADS];
     int num_threads = 0;
     for (server *server_conf = server_head->next; server_conf != NULL; server_conf = server_conf->next) {
-        pthread_create(&threads[num_threads], NULL, (void *) main_process, (void *) server_conf);
+        int pc_ret = pthread_create(&threads[num_threads], NULL, (void *) main_process, (void *) server_conf);
+        if (pc_ret != 0) {
+            log_error(DefaultCat, DefaultServer, "thread create not ok!");
+//            printf("thread create not ok!\n");
+        }
         num_threads++;
         if (num_threads >= MAX_THREADS) {
             // 达到最大线程数，等待所有线程结束

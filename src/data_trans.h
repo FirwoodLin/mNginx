@@ -10,12 +10,12 @@
 //int end_with_dual_crlf(const char *data);
 int end_with_dual_crlf(const char *data, size_t len);
 
-size_t client_to_mn(int, char **);
+ssize_t client_to_mn(int, char **);
 
 void mn_to_client(int, const char *, ssize_t);
 
-void mn_to_server(int, const char *);
+void mn_to_server(int fd, const char *data, ssize_t n);
 
-void server_to_mn(int, char **);
+ssize_t server_to_mn(int, char **);
 
 #endif //MNGINX_DATA_TRANS_H

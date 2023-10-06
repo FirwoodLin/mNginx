@@ -16,62 +16,32 @@ mime_map mime_types[] = {
         ".txt", "text/plain",
         ".png", "image/png",
 };
-const char *headers_file[] = {
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Length: %d\r\n"
-        "Accept-Ranges: bytes\r\n"
-        "Content-Type: text/html; charset=utf-8\r\n"
-        "Date: %s\r\n"
-        "Last-Modified: %s\r\n"
-        "\r\n",
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Length: %d\r\n"
-        "Accept-Ranges: bytes\r\n"
-        "Content-Type: text/plain; charset=utf-8\r\n"
-        "Date: %s\r\n"
-        "Last-Modified: %s\r\n"
-        "\r\n",
 
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Length: %d\r\n"
-        "Accept-Ranges: bytes\r\n"
-        "Content-Type: image/png\r\n"
-        "Date: %s\r\n"
-        "Last-Modified: %s\r\n"
-        "\r\n",
-        "HTTP/1.1 404 Not Found\r\n"
-        "Content-Length: 19\r\n"
-        "Content-Type: text/plain; charset=utf-8\r\n"
-        "Date: %s\r\n"
-        "X-Content-Type-Options: nosniff\r\n"
-        "\r\n"
-        "404 page not found\r\n"
-};
 
-/*strrpc replace the  oldstr in str with newstr*/
-void strrpc(char **str, char *oldstr, char *newstr) {
-    char *str_body = *str;
-    size_t old_len = strlen(oldstr);
-    size_t new_len = strlen(newstr);
-    size_t str_len = strlen(str_body);
-    size_t bstr_len = str_len + (new_len - old_len) + 1; // 计算转换后的字符串长度
-    char *bstr = (char *) malloc(bstr_len); // 动态分配转换缓冲区
-    memset(bstr, 0, bstr_len);
-
-    size_t bstr_index = 0;
-    for (size_t i = 0; i < str_len; i++) {
-        if (!strncmp(str_body + i, oldstr, old_len)) { // 查找目标字符串
-            strcat(bstr, newstr);
-            bstr_index += new_len;
-            i += old_len - 1;
-        } else {
-            bstr[bstr_index++] = str_body[i]; // 保存一字节进缓冲区
-        }
-    }
-    bstr[bstr_index] = '\0'; // 添加字符串结尾的空字符
-    free(*str);
-    *str = bstr; // 转换成功，返回转换后的字符串
-}
+///*strrpc replace the  oldstr in str with newstr*/
+//void strrpc(char **str, char *oldstr, char *newstr) {
+//    char *str_body = *str;
+//    size_t old_len = strlen(oldstr);
+//    size_t new_len = strlen(newstr);
+//    size_t str_len = strlen(str_body);
+//    size_t bstr_len = str_len + (new_len - old_len) + 1; // 计算转换后的字符串长度
+//    char *bstr = (char *) malloc(bstr_len); // 动态分配转换缓冲区
+//    memset(bstr, 0, bstr_len);
+//
+//    size_t bstr_index = 0;
+//    for (size_t i = 0; i < str_len; i++) {
+//        if (!strncmp(str_body + i, oldstr, old_len)) { // 查找目标字符串
+//            strcat(bstr, newstr);
+//            bstr_index += new_len;
+//            i += old_len - 1;
+//        } else {
+//            bstr[bstr_index++] = str_body[i]; // 保存一字节进缓冲区
+//        }
+//    }
+//    bstr[bstr_index] = '\0'; // 添加字符串结尾的空字符
+//    free(*str);
+//    *str = bstr; // 转换成功，返回转换后的字符串
+//}
 
 /*get_time get current UTC time*/
 void get_time(char **data) {
@@ -87,7 +57,7 @@ void get_time(char **data) {
 }
 
 /*get the modify time of the file, store in data*/
-void mTime(char *filepath, char **data) {
+void get_modify_time(const char *filepath, char **data) {
     char buffer[80];
     // get the last modified time of the file
     struct stat attr;

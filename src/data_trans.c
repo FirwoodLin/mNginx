@@ -36,10 +36,10 @@
 /// \param fd 客户端连接的文件描述符
 /// \param received_data 用于存储接收到的数据，函数内部会分配内存，使用完毕后需要调用free释放
 /// \return 读取到的数据的长度
-size_t client_to_mn(int fd, char **received_data) {
+ssize_t client_to_mn(int fd, char **received_data) {
     // 初始化动态缓冲区
     size_t buffer_size = 1024;  // 初始缓冲区大小
-    size_t data_length = 0;     // 已接收数据的长度
+    ssize_t data_length = 0;     // 已接收数据的长度
     *received_data = (char *) malloc(buffer_size);
     if (*received_data == NULL) {
         perror("malloc");
@@ -81,14 +81,15 @@ size_t client_to_mn(int fd, char **received_data) {
     return data_length;
 }
 
-void mn_to_server(int fd, const char *data) {
-    // 发送数据
-    ssize_t num_bytes_sent = send(fd, data, strlen(data), 0);
-    if (num_bytes_sent == -1) {
-        perror("sendto");
-        exit(1);
-    }
-    printf("Sent %zd bytes to the server.\n", num_bytes_sent);
+void mn_to_server(int fd, const char *data, ssize_t n) {
+//    // 发送数据
+//    ssize_t num_bytes_sent = send(fd, data, strlen(data), 0);
+//    if (num_bytes_sent == -1) {
+//        perror("sendto");
+//        exit(1);
+//    }
+//    printf("Sent %zd bytes to the server.\n", num_bytes_sent);
+    mn_to_client(fd, data, n);
 }
 
 void mn_to_client(int fd, const char *data, ssize_t n) {
@@ -102,15 +103,20 @@ void mn_to_client(int fd, const char *data, ssize_t n) {
 }
 
 
-void server_to_mn(int fd, char **data) {
-    char buff[1024];
-    memset(buff, 0x00, sizeof buff);
-    if (recv(fd, buff, 1024, 0) < 0) {
-        printf("Error while receiving server's msg\n");
-        exit(-1);
-    }
-    *data = (char *) malloc(strlen(buff));
-    strcpy(*data, buff);
+ssize_t server_to_mn(int fd, char **data) {
+//    char buff[1024];
+//    memset(buff, 0x00, sizeof buff);
+//    ssize_t ret = recv(fd, buff, 1024, 0);
+//    if (ret < 0) {
+//        printf("Error while receiving server's msg\n");
+////        exit(-1);
+//        return ret;
+//    }
+//    *data = (char *) malloc(ret+1);
+//    memset(*data, 0x00, ret+1);
+//    strcpy(*data, buff);
+//    return ret;
+    return client_to_mn(fd, data);
 }
 
 int end_with_dual_crlf(const char *data, size_t len) {

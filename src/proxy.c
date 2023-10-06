@@ -83,7 +83,7 @@ void *handle_client(void *arg) {
     location *best_match_loc = find_best_match_location(req, server_conf);
     /*  process static request*/
     if (best_match_loc == NULL) {
-        http_not_found(client_fd);
+        http_error(client_fd, TYPE_NOT_FOUND);
         close(client_fd);
         return NULL;
     }
@@ -93,7 +93,8 @@ void *handle_client(void *arg) {
         return NULL;
     }
     /*  process dynamic request*/
-    process_data(&client_msg, server_conf, best_match_loc);
+    process_header(&client_msg, server_conf, best_match_loc);
+    // ===与服务器建立连接===
     char *proxy_pass_ip = best_match_loc->proxy_pass_host;
     int proxy_pass_port = best_match_loc->proxy_pass_port;
     int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); // 目标服务器的 fd
@@ -109,13 +110,22 @@ void *handle_client(void *arg) {
         perror("connect");
         exit(1);
     }
-    // data process via mn_server socket
     printf("len msg to send to server: %zd\n", strlen(client_msg));
-    mn_to_server(fd, client_msg); // send data via new socket
+    // ===发送数据===
+    mn_to_server(fd, client_msg, strlen(client_msg)); // send data via new socket
     char *server_msg = NULL;
-    server_to_mn(fd, &server_msg);// receive data from socket
+    ssize_t ret_server = server_to_mn(fd, &server_msg);// receive data from socket
+    if (ret_server < 0) {
+//        printf("server_to_mn error\n");
+//        close(fd);
+        http_error(client_fd, TYPE_INTERNAL_ERROR);
+        log_error(DefaultCat, server_conf, "server_to_mn error");
+        close(client_fd);
+        return NULL;
+    }
     // send data via old socket
-    mn_to_client(client_fd, server_msg, strlen(server_msg));
+//    mn_to_client(client_fd, server_msg, ret_server);
+    http_data_dynamic(client_fd, server_msg, ret_server);
     printf("finished a client_fd");
     if (shutdown(client_fd, SHUT_RDWR) == -1) {
         perror("shutdown failed");
@@ -123,33 +133,48 @@ void *handle_client(void *arg) {
     return NULL;
 }
 
-/// \b 使用 strrpc 重构版本的头部数据处理
+/// \b 进行动态请求的头部信息替换
 /// \param client_msg
 /// \param server_conf
 /// \param loc
-void process_data(char **client_msg, server *server_conf, location *loc) {
-//    char *msg_ptr = *client_msg;
+void process_header(char **client_msg, server *server_conf, location *loc) {
     char *key = loc->proxy_set_header->key;
     char *val = loc->proxy_set_header->value;
-    replace_header(client_msg, key, val);
-    char *server_name = server_conf->server_name;
-    replace_server_name(client_msg, server_conf->server_name);
-
+    replace_header(client_msg, key, val); // 替换 host 信息
+    replace_server_name(client_msg, loc->proxy_pass); //   替换 Request URL 信息
 }
 
-void replace_server_name(char **msg, char *new_server_name) {
-    char *key1 = "Request URL: ";
+// Request URL 替换前缀为 proxy pass
+void replace_server_name(char **msg, char *new_prefix) {
+////    char *key = "Request URL: ";
+//    char *msg_ptr = *msg;
+////    char *key_pos = strstr(msg_ptr, key1);
+//    char * key_pos = strstr(msg_ptr, "://");
+//    key_pos += 3;
+//    char *key_end_pos = strstr(key_pos, "/");//左闭右开
+////    key_end_pos-=1;
+//    char *val = (char *) malloc(key_end_pos - key_pos);
+//    long  server_name_len = key_end_pos - key_pos;
+//    memset(val, 0x00, server_name_len);
+//    memcpy(val, key_pos, server_name_len);
+//    char *key2 = "Request URL";
+//    replace_header(msg, key2, val);
     char *msg_ptr = *msg;
-    char *key_pos = strstr(msg_ptr, key1);
-    key_pos = strstr(msg_ptr, "://");
-    key_pos += 3;
-    char *key_end_pos = strstr(key_pos, "/");//左闭右开
-//    key_end_pos-=1;
-    char *val = (char *) malloc(key_end_pos - key_pos);
-    memset(val, 0x00, key_end_pos - key_pos);
-    memcpy(val, key_pos, key_end_pos - key_pos);
-    char *key2 = "Request URL";
-    replace_header(msg, key2, val);
+    char key1[] = "Request URL: ";
+    char *key_pos = strstr(msg_ptr, key1);  // 定位到所在行
+    key_pos += strlen(key1);
+    char *key_pos2 = strstr(key_pos, "://"); // 定位到协议起点
+    key_pos2 += 3;
+    char *key_pos3 = strstr(key_pos2, "/");  // 定位到域名终点
+    char *key_pos4 = strstr(key_pos3, "\r\n"); // 定位到行终点
+    long old_val_len = key_pos4 - key_pos;
+    long new_val_len = strlen(new_prefix) + key_pos4 - key_pos3 + 1;
+    char *new_val = (char *) malloc(new_val_len);
+    memset(new_val, 0x00, new_val_len);
+    strncpy(new_val, new_prefix, strlen(new_prefix));
+    strncat(new_val, key_pos3, key_pos4 - key_pos3 - 1);
+    replace_header(msg, "Request URL", new_val);
+
 }
 
 /// \brief 处理动态请求的头部数据，以 k-v 形式修改
@@ -196,7 +221,6 @@ void static_file(int fd, location *m_loc, request *req, server *server_conf) {
     char *index = m_loc->index;
     char *pattern = m_loc->pattern;
     char *req_loc = req->location;// loc 中有一部分是 pattern
-//    char *data = NULL;
     // 获取请求的文件的物理路径
     unsigned real_path_len = strlen(root) + strlen(req_loc) - strlen(pattern) + 1;
     char *real_path = (char *) malloc(real_path_len);
@@ -212,7 +236,7 @@ void static_file(int fd, location *m_loc, request *req, server *server_conf) {
         char *buffer = read_file(index, &file_length);
         if (buffer == NULL) {
             printf("static_file: index file read error\n");
-            http_not_found(fd);
+            http_error(fd, TYPE_NOT_FOUND);
             log_info_e(DefaultCat, server_conf, m_loc, "%s %d %s", req->request_url, 404, req->user_agent);
             return;
         }
@@ -220,7 +244,7 @@ void static_file(int fd, location *m_loc, request *req, server *server_conf) {
     }
     // 收集首部信息
     char *header_mtime = NULL;// 修改时间
-    mTime(real_path, &header_mtime);// TODO: 时间年份不正确
+    get_modify_time(real_path, &header_mtime);// TODO: 时间年份不正确
     char *header_time = NULL;// 当前时间
     get_time(&header_time);
     char *header_content_type = NULL;// 文件类型

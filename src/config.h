@@ -26,6 +26,7 @@ typedef struct location_struct {
     char *pattern;
     int is_static;
     // dynamic
+    char *proxy_pass; // 原始的 proxy_pass
     item *proxy_set_header; // several headers, e.g. HOST
     char *proxy_pass_host;
     int proxy_pass_port;

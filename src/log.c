@@ -20,8 +20,6 @@ void init_log() {
     DefaultCat = (category *) malloc(sizeof(category));
     DefaultCat->level = LOG_LEVEL_DEBUG;
     DefaultServer = (server *) malloc(sizeof(server));
-//    DefaultServer->fe = stdout;
-//    DefaultServer->fa = stdout;
     FILE *f = fopen("error.log", "a");
     if (f == NULL) {
         printf("open error.log failed\n");
@@ -34,49 +32,32 @@ void init_log() {
         exit(1);
     }
     DefaultServer->fa = f;
-//    DefaultServer->fe = open_file("error.log", F_OK | R_OK | W_OK, "a+");
-//    DefaultServer->fa = open_file("access.log", F_OK | R_OK | W_OK, "a+");
 }
 
 void mlog(category *cat, FILE *f, server *ser, location *loc,
           const char *file, const char *func,
           long line, int level,
           const char *format, ...) {
+//    if(loc!=NULL){
+//
+//    }
     if (cat->level > level) {
         return;
     }
-//    printf("mlog is ready to output\n");
     char *t = NULL;
     get_time(&t);
     // 时间 级别 文件 函数 行号
     fprintf(f, "[%s %s]%s %s-%ld", t, LOG_LEVEL_MAP[level], file, func, line);
-//#ifdef LOCAL_FIR
-//    fprintf(stdout, "[%s %s]%s %s-%ld", t, LOG_LEVEL_MAP[level], file, func, line);
-//#endif
     free(t);
     if (loc != NULL) {
         // print context
         fprintf(f, "[server]listen:%d,servername:%s"
                    "[location]pattern:%s", ser->listen, ser->server_name, loc->pattern);
-//#ifdef LOCAL_FIR
-//        fprintf(stdout, "[server]listen:%d,servername:%s"
-//                   "[location]pattern:%s", ser->listen, ser->server_name, loc->pattern);
-//#endif
     }
     va_list args;
     va_start(args, format);
-//    char *buffer = NULL;
-//    get_time(&buffer);
-    // printf("%s %s:", "DEBUG", buffer);
     vfprintf(f, format, args);
-//#ifdef LOCAL_FIR
-//    vfprintf(stdout, format, args);
-//#endif
     va_end(args);
     fprintf(f, "\n");
     fflush(f);
-//#ifdef LOCAL_FIR
-//    fprintf(stdout, "\n");
-//    fflush(stdout);
-//#endif
 }

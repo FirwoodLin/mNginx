@@ -177,6 +177,7 @@ void read_in_conf() {
 //                    parse_url(b, &cur_location->proxy_pass_host, &cur_location->proxy_pass_port);
 //                    alloc_cpy(&cur_location->proxy_pass_host, strtok(b, ":"));
 //                    cur_location->proxy_pass_port = atoi(strtok(NULL, ":"));
+                    alloc_cpy(&cur_location->proxy_pass, b);
                     parse_url_host_port(b, &cur_location->proxy_pass_host, &cur_location->proxy_pass_port);
                     log_debug(DefaultCat, DefaultServer, "conf-read:proxy_pass:%s %d",
                               cur_location->proxy_pass_host,

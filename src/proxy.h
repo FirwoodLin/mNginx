@@ -40,9 +40,9 @@ void main_process(server *server_conf);
 
 int replace_header(char **msg, char *key, char *val);
 
-void process_data(char **, server *, location *);
+void process_header(char **, server *, location *);
 
-void replace_server_name(char **msg, char *new_server_name);
+void replace_server_name(char **msg, char *new_prefix);
 
 int is_static_request(char *);
 
