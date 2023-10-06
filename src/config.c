@@ -251,5 +251,5 @@ void parse_url_host_port(char *url, char **s_name, int *port) {
     strncpy(port_s, pos_end + 1, loc_len);
 //    *req_loc = port_s;
     *port = atoi(port_s);
-    free(port_s);
+//    free(port_s);
 }

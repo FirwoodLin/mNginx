@@ -48,7 +48,7 @@ void mlog(category *cat, FILE *f, server *ser, location *loc,
     get_time(&t);
     // 时间 级别 文件 函数 行号
     fprintf(f, "[%s %s]%s %s-%ld", t, LOG_LEVEL_MAP[level], file, func, line);
-    free(t);
+//    free(t);
     if (loc != NULL) {
         // print context
         fprintf(f, "[server]listen:%d,servername:%s"

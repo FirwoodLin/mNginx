@@ -32,7 +32,7 @@
 ////    }
 //}
 
-/// \brief 从客户端读取数据，直到读取到双CRLF结尾
+/// \brief 从客户端读取数据，直到读取到双CRLF结尾；
 /// \param fd 客户端连接的文件描述符
 /// \param received_data 用于存储接收到的数据，函数内部会分配内存，使用完毕后需要调用free释放
 /// \return 读取到的数据的长度
@@ -40,7 +40,7 @@ ssize_t client_to_mn(int fd, char **received_data) {
     // 初始化动态缓冲区
     size_t buffer_size = 1024;  // 初始缓冲区大小
     ssize_t data_length = 0;     // 已接收数据的长度
-    *received_data = (char *) malloc(buffer_size);
+    *received_data = (char *) malloc(buffer_size + 10);
     if (*received_data == NULL) {
         perror("malloc");
         return 0;
@@ -58,13 +58,14 @@ ssize_t client_to_mn(int fd, char **received_data) {
             perror("read");
             return 0;
         }
+        // TODO:处理长报文
         // 检查是否需要扩展缓冲区大小
         if (data_length + ret > buffer_size) {
             buffer_size *= 2;  // 扩展为当前大小的两倍
             char *new_buffer = (char *) realloc(*received_data, buffer_size);
             if (new_buffer == NULL) {
                 perror("realloc");
-                free(*received_data);
+//                free(*received_data);
                 *received_data = NULL;
                 return 0;
             }
@@ -102,21 +103,21 @@ void mn_to_client(int fd, const char *data, ssize_t n) {
     }
 }
 
-
+// 接收 服务器的数据
 ssize_t server_to_mn(int fd, char **data) {
-//    char buff[1024];
-//    memset(buff, 0x00, sizeof buff);
-//    ssize_t ret = recv(fd, buff, 1024, 0);
-//    if (ret < 0) {
-//        printf("Error while receiving server's msg\n");
-////        exit(-1);
-//        return ret;
-//    }
-//    *data = (char *) malloc(ret+1);
-//    memset(*data, 0x00, ret+1);
-//    strcpy(*data, buff);
-//    return ret;
-    return client_to_mn(fd, data);
+    char buff[1024];
+    memset(buff, 0x00, sizeof buff);
+    ssize_t ret = recv(fd, buff, 1024, 0);
+    if (ret < 0) {
+        printf("Error while receiving server's msg\n");
+//        exit(-1);
+        return ret;
+    }
+    *data = (char *) malloc(ret + 1);
+    memset(*data, 0x00, ret + 1);
+    strcpy(*data, buff);
+    return ret;
+//    return client_to_mn(fd, data);
 }
 
 int end_with_dual_crlf(const char *data, size_t len) {

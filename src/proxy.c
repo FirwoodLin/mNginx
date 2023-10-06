@@ -208,7 +208,7 @@ int replace_header(char **msg, char *key, char *val) {
     strcat(new_msg, val);
     strcat(new_msg, pos_val_end);
     *msg = new_msg;
-    free(msg_ptr);
+//    free(msg_ptr);
     return 0;
 }
 
@@ -303,7 +303,7 @@ request *parse_target(const char *client_msg, size_t len) {
     memset(req, 0x00, sizeof(request));
     char a[MAX_KV_LEN + 1], b[MAX_KV_LEN + 1];
     char *token;
-    char *rest = (char *) malloc(len + 1);
+    char *rest = (char *) malloc(len + 1 + 10);
     memset(rest, 0x00, len + 1);
     memcpy(rest, client_msg, len);  // 创造副本，防止修改原始数据
     token = strtok_r(rest, "\r\n", &rest);
