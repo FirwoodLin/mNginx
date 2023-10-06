@@ -74,10 +74,10 @@ void *handle_client(void *arg) {
     log_debug(DefaultCat, server_conf, "start to handle_client");
     // 从 client_fd 中读取数据 生成 client_msg
     char *client_msg = NULL;    // data that comes from client
-    client_to_mn(client_fd, &client_msg);
+    size_t len = client_to_mn(client_fd, &client_msg);
     printf("client_to_mn finished\n");
     /*parse the client msg, get target loc*/
-    request *req = parse_target(client_msg);
+    request *req = parse_target(client_msg, len);
     /*find best match location, get the ptr to loc*/
     req->port = server_conf->listen;
     location *best_match_loc = find_best_match_location(req, server_conf);
@@ -110,7 +110,7 @@ void *handle_client(void *arg) {
         exit(1);
     }
     // data process via mn_server socket
-    printf("len msg to send to server:%zd\n", strlen(client_msg));
+    printf("len msg to send to server: %zd\n", strlen(client_msg));
     mn_to_server(fd, client_msg); // send data via new socket
     char *server_msg = NULL;
     server_to_mn(fd, &server_msg);// receive data from socket
@@ -134,6 +134,7 @@ void process_data(char **client_msg, server *server_conf, location *loc) {
     replace_header(client_msg, key, val);
     char *server_name = server_conf->server_name;
     replace_server_name(client_msg, server_conf->server_name);
+
 }
 
 void replace_server_name(char **msg, char *new_server_name) {
@@ -185,52 +186,6 @@ int replace_header(char **msg, char *key, char *val) {
     free(msg_ptr);
     return 0;
 }
-//void process_data(char **client_msg, server *server_conf, location *loc) {
-//    char *msg_ptr = *client_msg;
-//    char *val = loc->proxy_set_header->value;
-//    // assemble the header_key
-//    char *key = loc->proxy_set_header->key;
-//    char needle[strlen(key) + 3];
-//    strcpy(needle, key);
-//    strcat(needle, ": ");
-//    char *pos_key = strstr(msg_ptr, needle);
-//    if (pos_key == NULL) {
-//        printf("process_data: target k(%s) not found\n",key);
-//        return;
-//    }
-//    char *pos_val_end = strstr(pos_key, "\r\n");
-//    if (pos_val_end == NULL) {
-//        printf("process_data: no val end found\n");
-//        return;
-//    }
-//    // 拼接新的报文
-//    size_t new_val_len = strlen(val);
-//    size_t msg_len = strlen(msg_ptr);
-//    size_t old_val_len = pos_val_end - pos_key - strlen(needle);
-//    size_t new_msg_len = msg_len + (new_val_len - old_val_len) + 1; // 计算替换后的字符串长度
-//
-//    char *new_msg = (char *) malloc(new_msg_len);
-//    memset(new_msg, 0, new_msg_len);
-//    strncpy(new_msg, msg_ptr, pos_key - msg_ptr+ strlen(needle));
-//    strcat(new_msg, val);
-//    strcat(new_msg, pos_val_end);
-//    *client_msg = new_msg;
-//    free(msg_ptr);
-//}
-
-//int is_static_request(char *request) {
-//    char *location = "/static";
-//    size_t head_len = strlen("GET ") + strlen(location);
-//    char *needle = (char *) malloc(head_len);
-//    strcpy(needle, "GET ");
-//    strcat(needle, location);
-//    char *pos = strstr(request, needle);
-//    if (pos == NULL) {
-//        printf("it is not a static file request\n");
-//        return 0;
-//    }
-//    return 1;
-//}
 
 /// \brief 处理静态请求
 /// \param fd
@@ -316,7 +271,7 @@ char *read_file(char *file_path, long *file_length) {
     return buffer;
 }
 
-request *parse_target(const char *client_msg) {
+request *parse_target(const char *client_msg, size_t len) {
 //    char formatString[20]; // 用于存储动态构建的格式化字符串
 //    sprintf(formatString, "%%%d[^:]: %%%d[^\r\n]%%*2c", MAX_KV_LEN, MAX_KV_LEN);
     printf("parse_target begin\n");
@@ -324,7 +279,9 @@ request *parse_target(const char *client_msg) {
     memset(req, 0x00, sizeof(request));
     char a[MAX_KV_LEN + 1], b[MAX_KV_LEN + 1];
     char *token;
-    char *rest = client_msg;
+    char *rest = (char *) malloc(len + 1);
+    memset(rest, 0x00, len + 1);
+    memcpy(rest, client_msg, len);  // 创造副本，防止修改原始数据
     token = strtok_r(rest, "\r\n", &rest);
     while (token != NULL && (sscanf(token, "%127[^:]: %127[^\r\n]%*2c", a, b) != EOF)) {
 //        char *key = strtok(client_msg, ":");

@@ -35,6 +35,7 @@ typedef struct hd_arg_struct {
 } hd_arg;
 
 void *handle_client(void *arg);
+
 void main_process(server *server_conf);
 
 int replace_header(char **msg, char *key, char *val);
@@ -42,6 +43,7 @@ int replace_header(char **msg, char *key, char *val);
 void process_data(char **, server *, location *);
 
 void replace_server_name(char **msg, char *new_server_name);
+
 int is_static_request(char *);
 
 //void static_file(int, char **, char *);
@@ -51,7 +53,7 @@ char *read_file(char *, long *);
 
 location *find_best_match_location(request *req, server *server_conf);
 
-request *parse_target(const char *client_msg);
+request *parse_target(const char *client_msg, size_t len);
 
 void parse_url(char *req_url, char **req_server_name, char **req_loc);
 

@@ -1,15 +1,12 @@
 client -> mNginx
 
 ```text
-Request URL: http://localhost/api/v1/healthy
-Request Method: GET
-\r\n
-Request Header:
-Host: localhost
-User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.2045.40
-Accept: */*
-\r\n
-\r\n
+"Request URL: http://127.0.0.1:1234/\r\n
+Request Method: GET\r\n\r\n
+Request Header:\r\n
+Host: localhost\r\n
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Wisn64; x64)AppleWebKit/537.36 (KHTML,like Gecko)\r\n
+Accept: */*\r\n\r\n"
 ```
 
 mNginx -> real server

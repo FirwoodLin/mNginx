@@ -31,14 +31,19 @@
 //    printf("%s\n", buf);
 ////    }
 //}
-void client_to_mn(int fd, char **received_data) {
+
+/// \brief 从客户端读取数据，直到读取到双CRLF结尾
+/// \param fd 客户端连接的文件描述符
+/// \param received_data 用于存储接收到的数据，函数内部会分配内存，使用完毕后需要调用free释放
+/// \return 读取到的数据的长度
+size_t client_to_mn(int fd, char **received_data) {
     // 初始化动态缓冲区
     size_t buffer_size = 1024;  // 初始缓冲区大小
     size_t data_length = 0;     // 已接收数据的长度
     *received_data = (char *) malloc(buffer_size);
     if (*received_data == NULL) {
         perror("malloc");
-        return;
+        return 0;
     }
     // 接收数据
     printf("client_to_mn begin fd:%d\n", fd);
@@ -47,11 +52,11 @@ void client_to_mn(int fd, char **received_data) {
         ssize_t ret = read(fd, buf, sizeof(buf));
         if (ret == 0) {
             printf("client_to_mn end fd:%d ret=0\n", fd);
-            return;
+            return 0;
         }
         if (ret == -1) {
             perror("read");
-            return;
+            return 0;
         }
         // 检查是否需要扩展缓冲区大小
         if (data_length + ret > buffer_size) {
@@ -61,7 +66,7 @@ void client_to_mn(int fd, char **received_data) {
                 perror("realloc");
                 free(*received_data);
                 *received_data = NULL;
-                return;
+                return 0;
             }
             *received_data = new_buffer;
         }
@@ -73,7 +78,7 @@ void client_to_mn(int fd, char **received_data) {
             break;  // 读取完毕，退出循环
         }
     }
-
+    return data_length;
 }
 
 void mn_to_server(int fd, const char *data) {
