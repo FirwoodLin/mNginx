@@ -20,8 +20,22 @@ void init_log() {
     DefaultCat = (category *) malloc(sizeof(category));
     DefaultCat->level = LOG_LEVEL_DEBUG;
     DefaultServer = (server *) malloc(sizeof(server));
-    DefaultServer->fe = stdout;
-    DefaultServer->fa = stdout;
+//    DefaultServer->fe = stdout;
+//    DefaultServer->fa = stdout;
+    FILE *f = fopen("error.log", "a");
+    if (f == NULL) {
+        printf("open error.log failed\n");
+        exit(1);
+    }
+    DefaultServer->fe = f;
+    f = fopen("access.log", "a");
+    if (f == NULL) {
+        printf("open access.log failed\n");
+        exit(1);
+    }
+    DefaultServer->fa = f;
+//    DefaultServer->fe = open_file("error.log", F_OK | R_OK | W_OK, "a+");
+//    DefaultServer->fa = open_file("access.log", F_OK | R_OK | W_OK, "a+");
 }
 
 void mlog(category *cat, FILE *f, server *ser, location *loc,
@@ -31,7 +45,8 @@ void mlog(category *cat, FILE *f, server *ser, location *loc,
     if (cat->level > level) {
         return;
     }
-    char *t;
+//    printf("mlog is ready to output\n");
+    char *t = NULL;
     get_time(&t);
     // 时间 级别 文件 函数 行号
     fprintf(f, "[%s %s]%s %s-%ld", t, LOG_LEVEL_MAP[level], file, func, line);
@@ -49,4 +64,5 @@ void mlog(category *cat, FILE *f, server *ser, location *loc,
     vfprintf(f, format, args);
     va_end(args);
     fprintf(f, "\n");
+    fflush(f);
 }

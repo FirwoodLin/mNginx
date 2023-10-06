@@ -18,4 +18,5 @@ unsigned int BKDRHash(char *str);
 
 void alloc_cpy(char **dest, char *src);
 
+int mkdir_rec(const char *path);
 #endif //MNGINX_UTIL_H

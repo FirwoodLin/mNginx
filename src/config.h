@@ -56,6 +56,7 @@ char *StrStrip(char *s);
 
 void read_in_conf();
 
+int mkdir_rec_no_file(const char *path);
 /* MACRO  */
 // hash function mod
 #define H_MOD  41

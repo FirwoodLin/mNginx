@@ -81,7 +81,7 @@ void get_time(char **data) {
     time(&now);  // 获取当前时间
     timeinfo = gmtime(&now);  // 将当前时间转换为UTC时间
     strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
-    free(*data);
+    if (*data != NULL) free(*data);
     *data = (char *) malloc(sizeof(buffer));
     strcpy(*data, buffer);
 }

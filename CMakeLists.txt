@@ -17,4 +17,6 @@ add_executable(mNginx
         src/proxy.h
         src/util.c
         src/util.h
+        src/log.c
+        src/log.h
 )

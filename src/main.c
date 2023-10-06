@@ -16,6 +16,9 @@
 #define MAX_THREADS 100
 int main(void) {
     init_log();
+    log_debug(DefaultCat, DefaultServer, "start to read in conf");
+//    log_info_e(DefaultCat,DefaultServer,"start to read in conf");
+
     read_in_conf();
     // bind & listen; mn as a server
     pthread_t threads[MAX_THREADS];
