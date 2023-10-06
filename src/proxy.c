@@ -82,6 +82,11 @@ void *handle_client(void *arg) {
     req->port = server_conf->listen;
     location *best_match_loc = find_best_match_location(req, server_conf);
     /*  process static request*/
+    if (best_match_loc == NULL) {
+        http_not_found(client_fd);
+        close(client_fd);
+        return NULL;
+    }
     if (best_match_loc->is_static == 1) {
         static_file(client_fd, best_match_loc, req, server_conf);  // 生成响应报文 并返回
         close(client_fd);
@@ -89,8 +94,8 @@ void *handle_client(void *arg) {
     }
     /*  process dynamic request*/
     process_data(&client_msg, server_conf, best_match_loc);
-    char *proxy_pass_ip = server_conf->first_loc->proxy_pass_host;
-    int proxy_pass_port = server_conf->first_loc->proxy_pass_port;
+    char *proxy_pass_ip = best_match_loc->proxy_pass_host;
+    int proxy_pass_port = best_match_loc->proxy_pass_port;
     int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); // 目标服务器的 fd
     if (fd == -1) {
         perror("socket");
@@ -311,7 +316,7 @@ char *read_file(char *file_path, long *file_length) {
     return buffer;
 }
 
-request *parse_target(char *client_msg) {
+request *parse_target(const char *client_msg) {
 //    char formatString[20]; // 用于存储动态构建的格式化字符串
 //    sprintf(formatString, "%%%d[^:]: %%%d[^\r\n]%%*2c", MAX_KV_LEN, MAX_KV_LEN);
     printf("parse_target begin\n");
@@ -395,10 +400,12 @@ location *find_best_match_location(request *req, server *server_conf) {
         if (strcmp(server_ptr->server_name, req_server_name) == 0 && server_ptr->listen == req->port) {
             // found the server; name and port must match
             printf("find:server_name:%s\n", server_ptr->server_name);
-            for (location *loc_ptr = server_ptr->first_loc; loc_ptr != NULL; loc_ptr = loc_ptr->next) {
+            for (location *loc_ptr = server_ptr->first_loc->next; loc_ptr != NULL; loc_ptr = loc_ptr->next) {
                 if (strcmp(loc_ptr->pattern, req_loc) == 0) {
                     // found the location
-                    printf("find:loc:%s\n", loc_ptr->pattern);
+//                    printf("find:loc:%s\n", loc_ptr->pattern);
+                    log_debug(DefaultCat, server_ptr, "found location,pattern:%s;request pattern:%s", loc_ptr->pattern,
+                              req_loc);
                     return loc_ptr;
                 }
             }

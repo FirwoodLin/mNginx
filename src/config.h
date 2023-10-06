@@ -41,7 +41,7 @@ typedef struct server_struct {
     char *server_name;
     char *error_log;
     char *access_log;
-    location *first_loc; // several locations
+    location *first_loc; // 头节点，不存储数据
     /* manually added */
     struct server_struct *next;// use link table to store servers
     FILE *fe;// error log file ptr

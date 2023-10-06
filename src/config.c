@@ -71,27 +71,33 @@ void read_in_conf() {
                     server_last->next = new_s;
                     server_last = new_s;
                 }
-                cur_location = NULL;
-                server_last->first_loc = cur_location;
+//                cur_location = NULL;
+//                server_last->first_loc = cur_location;
+//                cur_location = server_last->first_loc;
+                server_last->first_loc = (location *) malloc(sizeof(location));
+                memset(server_last->first_loc, 0x00, sizeof(location));
+                cur_location = server_last->first_loc;
                 break;
             }
             case H_location: {
                 flag_server_inputting = 0;
                 flag_location_inputting = 1;
-                location *last_location = cur_location;
-                cur_location = (location *) malloc(sizeof(location));
-                memset(cur_location, 0x00, sizeof(location));
-                if (last_location != NULL) {
-                    last_location->next = cur_location;
+                if (server_last->first_loc->next == NULL) {
+                    // 现在是头节点状态
+                    cur_location = (location *) malloc(sizeof(location));
+                    memset(cur_location, 0x00, sizeof(location));
+                    server_last->first_loc->next = cur_location;
+                } else {
+                    // 现在是中间节点状态
+                    cur_location->next = (location *) malloc(sizeof(location));
+                    memset(cur_location->next, 0x00, sizeof(location));
+                    cur_location = cur_location->next;
                 }
                 break;
             }
             default:
-//                    printf("line %d invalid tag:%s\n", line_count, a);
                 break;
         }
-//        }
-
         if (flag_server_inputting && hash_val != H_server) {
             switch (hash_val) {
                 case H_listen: {
@@ -134,10 +140,9 @@ void read_in_conf() {
                     log_debug(DefaultCat, DefaultServer, "conf-read:access_log:%s", b);
                     break;
                 }
-
                 default:
-//                    printf("line %d server tag has no field\n", line_count);
                     log_warn(DefaultCat, DefaultServer, "line %d server tag(%s) has no field\n", line_count, a);
+                    break;
             }
         } else if (flag_location_inputting && hash_val != H_location) {
             switch (hash_val) {
