@@ -46,7 +46,8 @@ void client_to_mn(int fd, char **received_data) {
         char buf[1024];
         ssize_t ret = read(fd, buf, sizeof(buf));
         if (ret == 0) {
-            break;  // 读取完毕，退出循环
+            printf("client_to_mn end fd:%d ret=0\n", fd);
+            return;
         }
         if (ret == -1) {
             perror("read");
@@ -67,8 +68,12 @@ void client_to_mn(int fd, char **received_data) {
         // 将读取的数据拷贝到缓冲区
         memcpy(*received_data + data_length, buf, ret);
         data_length += ret;
-        printf("fd %d接收数据总长:%zd\n", fd, ret);
+        if (end_with_dual_crlf(buf, ret)) {
+            printf("fd %d接收数据总长:%zd\n", fd, data_length);
+            break;  // 读取完毕，退出循环
+        }
     }
+
 }
 
 void mn_to_server(int fd, const char *data) {
@@ -101,4 +106,15 @@ void server_to_mn(int fd, char **data) {
     }
     *data = (char *) malloc(strlen(buff));
     strcpy(*data, buff);
+}
+
+int end_with_dual_crlf(const char *data, size_t len) {
+//    size_t len = strlen(data);
+    if (len < 4) {
+        return 0;
+    }
+    if (data[len - 1] == '\n' && data[len - 2] == '\r' && data[len - 3] == '\n' && data[len - 4] == '\r') {
+        return 1;
+    }
+    return 0;
 }

@@ -6,6 +6,9 @@
 #define MNGINX_DATA_TRANS_H
 
 #include <sys/socket.h>
+
+//int end_with_dual_crlf(const char *data);
+int end_with_dual_crlf(const char *data, size_t len);
 void client_to_mn(int, char **);
 
 void mn_to_client(int, const char *, ssize_t);

@@ -23,13 +23,15 @@ typedef struct request_header {
     char *user_agent;
     char *accept;
     unsigned port;
-    char *server_name;
+    char *server_name; // http:// 到 / 之间的部分，可能包含端口号
     char *location;
+    int status_code;// 返回状态码
 } request;
 typedef struct hd_arg_struct {
     // handle_client arg
     int fd;
     server *server_conf;
+    location *loc;
 } hd_arg;
 
 void *handle_client(void *arg);
@@ -43,7 +45,7 @@ void replace_server_name(char **msg, char *new_server_name);
 int is_static_request(char *);
 
 //void static_file(int, char **, char *);
-void static_file(int fd, location *m_loc, request *req);
+void static_file(int fd, location *m_loc, request *req, server *server_conf);
 
 char *read_file(char *, long *);
 

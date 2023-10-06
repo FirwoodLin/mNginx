@@ -26,7 +26,7 @@
     mlog(cat, ((server*)ser)->fe,ser, NULL, __FILE__, __func__, __LINE__, \
          LOG_LEVEL_DEBUG, __VA_ARGS__)
 
-// 作为access log输出 带有 sev, loc, 返回响应信息的 info 级别日志
+/// \b 作为access log输出 带有 sev, loc, 返回响应信息的 info 级别日志;打印⽤戶http请求起始⾏信息、请求返回的状态码、User-Agent。
 #define log_info_e(cat, ser, loc, ...)               \
     mlog(cat, ((server*)ser)->fa, ser, loc, __FILE__, __func__, __LINE__, \
          LOG_LEVEL_INFO, __VA_ARGS__)

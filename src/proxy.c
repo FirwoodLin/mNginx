@@ -43,6 +43,7 @@ void main_process(server *server_conf) {
         close(server_fd);
         exit(1);
     }
+    log_info(DefaultCat, server_conf, "start to listen on port %d", server_conf->listen);
     // 接收请求
     for (;;) {
         // 在 server_fd 上接收请求, 生成 client_fd
@@ -54,7 +55,6 @@ void main_process(server *server_conf) {
 
         }
         // 多线程处理客户端请求
-
         pthread_t tid;
         hd_arg ha = {client_fd, server_conf};
         if (pthread_create(&tid, NULL, handle_client, &ha) != 0) {
@@ -71,6 +71,7 @@ void *handle_client(void *arg) {
     hd_arg *ha = (hd_arg *) arg;
     int client_fd = ha->fd;
     server *server_conf = ha->server_conf;
+    log_debug(DefaultCat, server_conf, "start to handle_client");
     // 从 client_fd 中读取数据 生成 client_msg
     char *client_msg = NULL;    // data that comes from client
     client_to_mn(client_fd, &client_msg);
@@ -82,11 +83,9 @@ void *handle_client(void *arg) {
     location *best_match_loc = find_best_match_location(req, server_conf);
     /*  process static request*/
     if (best_match_loc->is_static == 1) {
-        static_file(client_fd, best_match_loc, req);  // 生成响应报文 并返回
-        printf("finished a client_fd %d\n", client_fd);
+        static_file(client_fd, best_match_loc, req, server_conf);  // 生成响应报文 并返回
         close(client_fd);
         return NULL;
-//        continue;
     }
     /*  process dynamic request*/
     process_data(&client_msg, server_conf, best_match_loc);
@@ -232,7 +231,7 @@ int replace_header(char **msg, char *key, char *val) {
 /// \param fd
 /// \param data
 /// \param request
-void static_file(int fd, location *m_loc, request *req) {
+void static_file(int fd, location *m_loc, request *req, server *server_conf) {
     char *root = m_loc->root;
     char *index = m_loc->index;
     char *pattern = m_loc->pattern;
@@ -253,6 +252,8 @@ void static_file(int fd, location *m_loc, request *req) {
         char *buffer = read_file(index, &file_length);
         if (buffer == NULL) {
             printf("static_file: index file read error\n");
+            http_not_found(fd);
+            log_info_e(DefaultCat, server_conf, m_loc, "%s %d %s", req->request_url, 404, req->user_agent);
             return;
         }
         file_content = buffer;
@@ -273,6 +274,7 @@ void static_file(int fd, location *m_loc, request *req) {
     mn_to_client(fd, header, strlen(header));
 //    // 分批发送数据
     mn_to_client(fd, file_content, file_length);
+    log_info_e(DefaultCat, server_conf, m_loc, "%s %d %s", req->request_url, 200, req->user_agent);
 }
 
 /// \brief 读取文件，返回长度和内容
@@ -315,7 +317,6 @@ request *parse_target(char *client_msg) {
     printf("parse_target begin\n");
     request *req = (request *) malloc(sizeof(request));
     memset(req, 0x00, sizeof(request));
-
     char a[MAX_KV_LEN + 1], b[MAX_KV_LEN + 1];
     char *token;
     char *rest = client_msg;
@@ -329,7 +330,6 @@ request *parse_target(char *client_msg) {
             continue;
         }
         printf("parse_target:%s#%s\n", a, b);
-//        sscanf(client_msg, "%127s[^\r\n]%%*2c", b);
         switch (key_hash) {
             case H_Request_URL:
                 alloc_cpy(&req->request_url, b);
@@ -388,7 +388,8 @@ location *find_best_match_location(request *req, server *server_conf) {
 //    char *req_url = req->request_url;
 //    req_server_name = req_loc = NULL;
     parse_url(req->request_url, &req->server_name, &req->location);
-    char *req_server_name = req->server_name, *req_loc = req->location;
+    // nginx 的 server_name 实际上是和请求中的 host 一致
+    char *req_server_name = req->host, *req_loc = req->location;
     printf("find_best_match_location begin:req_server_name:%s,req_loc:%s\n", req_server_name, req_loc);
     for (server *server_ptr = server_conf; server_ptr != NULL; server_ptr = server_ptr->next) {
         if (strcmp(server_ptr->server_name, req_server_name) == 0 && server_ptr->listen == req->port) {

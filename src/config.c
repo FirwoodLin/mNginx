@@ -5,6 +5,7 @@
 #include "config.h"
 #include "util.h"
 #include "log.h"
+#include "proxy.h"
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -57,7 +58,7 @@ void read_in_conf() {
         unsigned int hash_val = BKDRHash(a) % H_MOD;
 //        if (ret == 1) {
         switch (hash_val) {
-            case H_server:
+            case H_server: {
                 flag_server_inputting = 1;
                 flag_location_inputting = 0;
                 server *new_s = (server *) malloc(sizeof(server));
@@ -73,7 +74,8 @@ void read_in_conf() {
                 cur_location = NULL;
                 server_last->first_loc = cur_location;
                 break;
-            case H_location:
+            }
+            case H_location: {
                 flag_server_inputting = 0;
                 flag_location_inputting = 1;
                 location *last_location = cur_location;
@@ -83,6 +85,7 @@ void read_in_conf() {
                     last_location->next = cur_location;
                 }
                 break;
+            }
             default:
 //                    printf("line %d invalid tag:%s\n", line_count, a);
                 break;
@@ -166,8 +169,10 @@ void read_in_conf() {
                     break;
                 }
                 case H_proxy_pass: {
-                    alloc_cpy(&cur_location->proxy_pass_host, strtok(b, ":"));
-                    cur_location->proxy_pass_port = atoi(strtok(NULL, ":"));
+//                    parse_url(b, &cur_location->proxy_pass_host, &cur_location->proxy_pass_port);
+//                    alloc_cpy(&cur_location->proxy_pass_host, strtok(b, ":"));
+//                    cur_location->proxy_pass_port = atoi(strtok(NULL, ":"));
+                    parse_url_host_port(b, &cur_location->proxy_pass_host, &cur_location->proxy_pass_port);
                     log_debug(DefaultCat, DefaultServer, "conf-read:proxy_pass:%s %d",
                               cur_location->proxy_pass_host,
                               cur_location->proxy_pass_port);
@@ -214,4 +219,31 @@ int mkdir_rec_no_file(const char *path) {
         tmp[0] = '\0';
     }
     return mkdir_rec(tmp);
+}
+
+/// \b 从形如 http://1.1.1.1:80/ 中解析出 server_name 和 port
+void parse_url_host_port(char *url, char **s_name, int *port) {
+    char *pos = strstr(url, "://");
+    if (pos == NULL) {
+        printf("get_server_name;no protocol found\n");
+        return;
+    }
+    char *pos_end = strstr(pos + 3, ":");
+    if (pos_end == NULL) {
+        printf("get_server_name;no path found\n");
+        return;
+    }
+    size_t server_name_len = pos_end - pos - 3;// 3==://
+    char *server_name = (char *) malloc(server_name_len + 1);
+    memset(server_name, 0x00, server_name_len + 1);
+    strncpy(server_name, pos + 3, server_name_len);
+    *s_name = server_name;
+    // port
+    size_t loc_len = strlen(url) - (pos_end - url) - 2;
+    char *port_s = (char *) malloc(loc_len + 1);
+    memset(port_s, 0x00, loc_len + 1);
+    strncpy(port_s, pos_end + 1, loc_len);
+//    *req_loc = port_s;
+    *port = atoi(port_s);
+    free(port_s);
 }

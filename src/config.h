@@ -57,6 +57,8 @@ char *StrStrip(char *s);
 void read_in_conf();
 
 int mkdir_rec_no_file(const char *path);
+
+void parse_url_host_port(char *url, char **s_name, int *port);
 /* MACRO  */
 // hash function mod
 #define H_MOD  41

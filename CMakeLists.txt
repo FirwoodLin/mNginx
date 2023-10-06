@@ -20,3 +20,4 @@ add_executable(mNginx
         src/log.c
         src/log.h
 )
+add_definitions(-DLOCAL_FIR)
