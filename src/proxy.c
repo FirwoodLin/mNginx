@@ -38,7 +38,7 @@ void main_process(server *server_conf) {
         exit(1);
 
     }
-    if (listen(server_fd, 5) == -1) {
+    if (listen(server_fd, 50) == -1) {
         perror("listen failed");
         close(server_fd);
         exit(1);
@@ -49,21 +49,27 @@ void main_process(server *server_conf) {
         // 在 server_fd 上接收请求, 生成 client_fd
         int client_fd = accept(server_fd, NULL, NULL);
         if (client_fd < 0) {
+            log_error(DefaultCat, server_conf, "accept failed c_fd: %d", client_fd);
             perror("accept failed");
             close(server_fd);
-            exit(1);
-
+//            exit(1);
         }
         // 多线程处理客户端请求
         pthread_t tid;
-        hd_arg ha = {client_fd, server_conf};
-        if (pthread_create(&tid, NULL, handle_client, &ha) != 0) {
+//        hd_arg ha = {client_fd, server_conf};
+        hd_arg *ha = (hd_arg *) malloc(sizeof(hd_arg));
+        memset(ha, 0x00, sizeof(hd_arg));
+        ha->fd = client_fd;
+        ha->server_conf = server_conf;
+
+        if (pthread_create(&tid, NULL, handle_client, ha) != 0) {
             perror("pthread_create failed");
             close(client_fd);
             continue;
         }
         pthread_detach(tid);
     }
+    printf("main process finished\n");
     close(server_fd);
 }
 
@@ -77,7 +83,7 @@ void *handle_client(void *arg) {
     size_t len = client_to_mn(client_fd, &client_msg);
     printf("client_to_mn finished\n");
     /*parse the client msg, get target loc*/
-    request *req = parse_target(client_msg, len);
+    request *req = parse_target(client_msg, len, server_conf);
     /*find best match location, get the ptr to loc*/
     req->port = server_conf->listen;
     location *best_match_loc = find_best_match_location(req, server_conf);
@@ -124,8 +130,11 @@ void *handle_client(void *arg) {
         return NULL;
     }
     // send data via old socket
-//    mn_to_client(client_fd, server_msg, ret_server);
-    http_data_dynamic(client_fd, server_msg, ret_server);
+    log_info(DefaultCat, server_conf, "ready to response to client");
+//    http_data_dynamic(client_fd, server_msg, ret_server);
+    mn_to_client(client_fd, server_msg, ret_server);
+    int status_code = parse_status_code(server_msg);
+    log_info_e(DefaultCat, server_conf, best_match_loc, "%s %d %s", req->request_url, status_code, req->user_agent);
     printf("finished a client_fd");
     if (shutdown(client_fd, SHUT_RDWR) == -1) {
         perror("shutdown failed");
@@ -295,7 +304,7 @@ char *read_file(char *file_path, long *file_length) {
     return buffer;
 }
 
-request *parse_target(const char *client_msg, size_t len) {
+request *parse_target(const char *client_msg, size_t len, server *server_conf) {
 //    char formatString[20]; // 用于存储动态构建的格式化字符串
 //    sprintf(formatString, "%%%d[^:]: %%%d[^\r\n]%%*2c", MAX_KV_LEN, MAX_KV_LEN);
     printf("parse_target begin\n");
@@ -315,7 +324,8 @@ request *parse_target(const char *client_msg, size_t len) {
 
             continue;
         }
-        printf("parse_target:%s#%s\n", a, b);
+//        printf("parse_target:%s#%s\n", a, b);
+        log_debug(DefaultCat, server_conf, "parse_target:%s#%s\n", a, b);
         switch (key_hash) {
             case H_Request_URL:
                 alloc_cpy(&req->request_url, b);
@@ -381,17 +391,52 @@ location *find_best_match_location(request *req, server *server_conf) {
         if (strcmp(server_ptr->server_name, req_server_name) == 0 && server_ptr->listen == req->port) {
             // found the server; name and port must match
             printf("find:server_name:%s\n", server_ptr->server_name);
+            int max_match_len = 0;
+            location *best_match_loc = NULL;
             for (location *loc_ptr = server_ptr->first_loc->next; loc_ptr != NULL; loc_ptr = loc_ptr->next) {
-                if (strcmp(loc_ptr->pattern, req_loc) == 0) {
+                if (loc_ptr->rule == RULE_EXACT && strcmp(loc_ptr->pattern, req_loc) == 0) {
                     // found the location
 //                    printf("find:loc:%s\n", loc_ptr->pattern);
-                    log_debug(DefaultCat, server_ptr, "found location,pattern:%s;request pattern:%s", loc_ptr->pattern,
-                              req_loc);
-                    return loc_ptr;
+                    best_match_loc = loc_ptr;
+//                    return loc_ptr;
+                    break;
+                }
+                if ((loc_ptr->rule == RULE_PREFIX || loc_ptr->rule == RULE_DEFAULT)
+                    && strncmp(loc_ptr->pattern, req_loc, strlen(loc_ptr->pattern)) == 0) {
+                    // found the location
+                    if (max_match_len < strlen(loc_ptr->pattern)) {
+                        max_match_len = strlen(loc_ptr->pattern);
+                        best_match_loc = loc_ptr;
+                    }
                 }
             }
+            log_debug(DefaultCat, server_ptr, "found location,pattern:%s;request pattern:%s",
+                      best_match_loc->pattern,
+                      req_loc);
+            return best_match_loc;
         }
     }
     printf("best match not found:%s\n", req_loc);
     return NULL;
+}
+
+/// \brief 从标准HTTP响应字符串中解析出状态码
+int parse_status_code(const char *msg) {
+    char *pos = strstr(msg, " ");
+    if (pos == NULL) {
+        printf("parse_status_code: no space found\n");
+        return -1;
+    }
+    pos += 1;
+    char *pos_end = strstr(pos, " ");
+    if (pos_end == NULL) {
+        printf("parse_status_code: no space found\n");
+        return -1;
+    }
+    char *code = (char *) malloc(pos_end - pos + 1);
+    memset(code, 0x00, pos_end - pos + 1);
+    strncpy(code, pos, pos_end - pos);
+    int ret = atoi(code);
+    free(code);
+    return ret;
 }

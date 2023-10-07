@@ -70,6 +70,7 @@ void http_error(int fd, header_type ht) {
 }
 
 void http_data_dynamic(int fd, const char *data, ssize_t len) {
+//    log_info
     char *edited_header = (char *) malloc(strlen(headers_file[TYPE_TXT]) + 20);
     memset(edited_header, 0x00, strlen(headers_file[TYPE_TXT]) + 20);
     char *date_s = NULL;

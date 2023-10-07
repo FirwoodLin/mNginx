@@ -95,7 +95,7 @@ void mn_to_server(int fd, const char *data, ssize_t n) {
 
 void mn_to_client(int fd, const char *data, ssize_t n) {
     // n is the length of data
-    printf("mn_to_client;data to write:\n%s\n", data);
+//    printf("mn_to_client;data to write:\n%s\n", data);
     ssize_t ret;
     ret = write(fd, data, n);
     if (ret < 0) {

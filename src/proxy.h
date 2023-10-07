@@ -53,8 +53,10 @@ char *read_file(char *, long *);
 
 location *find_best_match_location(request *req, server *server_conf);
 
-request *parse_target(const char *client_msg, size_t len);
+request *parse_target(const char *client_msg, size_t len, server *server_conf);
 
 void parse_url(char *req_url, char **req_server_name, char **req_loc);
+
+int parse_status_code(const char *msg);
 
 #endif //MNGINX_PROXY_H
