@@ -56,8 +56,7 @@ void main_process(server *server_conf) {
         }
         // 多线程处理客户端请求
         pthread_t tid;
-//        hd_arg ha = {client_fd, server_conf};
-        hd_arg *ha = (hd_arg *) malloc(sizeof(hd_arg));
+        hd_arg *ha = (hd_arg *) malloc(sizeof(hd_arg));// 使用 malloc 防止 ha 被释放
         memset(ha, 0x00, sizeof(hd_arg));
         ha->fd = client_fd;
         ha->server_conf = server_conf;
@@ -122,8 +121,6 @@ void *handle_client(void *arg) {
     char *server_msg = NULL;
     ssize_t ret_server = server_to_mn(fd, &server_msg);// receive data from socket
     if (ret_server < 0) {
-//        printf("server_to_mn error\n");
-//        close(fd);
         http_error(client_fd, TYPE_INTERNAL_ERROR);
         log_error(DefaultCat, server_conf, "server_to_mn error");
         close(client_fd);
@@ -131,7 +128,6 @@ void *handle_client(void *arg) {
     }
     // send data via old socket
     log_info(DefaultCat, server_conf, "ready to response to client");
-//    http_data_dynamic(client_fd, server_msg, ret_server);
     mn_to_client(client_fd, server_msg, ret_server);
     int status_code = parse_status_code(server_msg);
     log_info_e(DefaultCat, server_conf, best_match_loc, "%s %d %s", req->request_url, status_code, req->user_agent);
@@ -155,19 +151,6 @@ void process_header(char **client_msg, server *server_conf, location *loc) {
 
 // Request URL 替换前缀为 proxy pass
 void replace_server_name(char **msg, char *new_prefix) {
-////    char *key = "Request URL: ";
-//    char *msg_ptr = *msg;
-////    char *key_pos = strstr(msg_ptr, key1);
-//    char * key_pos = strstr(msg_ptr, "://");
-//    key_pos += 3;
-//    char *key_end_pos = strstr(key_pos, "/");//左闭右开
-////    key_end_pos-=1;
-//    char *val = (char *) malloc(key_end_pos - key_pos);
-//    long  server_name_len = key_end_pos - key_pos;
-//    memset(val, 0x00, server_name_len);
-//    memcpy(val, key_pos, server_name_len);
-//    char *key2 = "Request URL";
-//    replace_header(msg, key2, val);
     char *msg_ptr = *msg;
     char key1[] = "Request URL: ";
     char *key_pos = strstr(msg_ptr, key1);  // 定位到所在行
@@ -317,14 +300,12 @@ request *parse_target(const char *client_msg, size_t len, server *server_conf) {
     memcpy(rest, client_msg, len);  // 创造副本，防止修改原始数据
     token = strtok_r(rest, "\r\n", &rest);
     while (token != NULL && (sscanf(token, "%127[^:]: %127[^\r\n]%*2c", a, b) != EOF)) {
-//        char *key = strtok(client_msg, ":");
         unsigned int key_hash = BKDRHash(a) % H_MOD_REQUEST;
         if (key_hash == H_Request_Header) {
             token = strtok_r(rest, "\r\n", &rest);
 
             continue;
         }
-//        printf("parse_target:%s#%s\n", a, b);
         log_debug(DefaultCat, server_conf, "parse_target:%s#%s\n", a, b);
         switch (key_hash) {
             case H_Request_URL:
@@ -343,14 +324,14 @@ request *parse_target(const char *client_msg, size_t len, server *server_conf) {
                 alloc_cpy(&req->accept, b);
                 break;
             default:
-                printf("unknown:parse_target;key:%s,value:%s\n", a, b);
+//                printf("unknown:parse_target;key:%s,value:%s\n", a, b);
+                log_warn(DefaultCat, server_conf, "unknown key:%s(value:%s)\n", a, b);
                 break;
         }
 
         token = strtok_r(rest, "\r\n", &rest);
 
     }
-
     printf("parse_target finished;request_url:%s\n", req->request_url);
     return req;
 }
@@ -381,8 +362,6 @@ void parse_url(char *req_url, char **req_server_name, char **req_loc) {
 
 
 location *find_best_match_location(request *req, server *server_conf) {
-//    char *req_url = req->request_url;
-//    req_server_name = req_loc = NULL;
     parse_url(req->request_url, &req->server_name, &req->location);
     // nginx 的 server_name 实际上是和请求中的 host 一致
     char *req_server_name = req->host, *req_loc = req->location;
@@ -394,13 +373,13 @@ location *find_best_match_location(request *req, server *server_conf) {
             int max_match_len = 0;
             location *best_match_loc = NULL;
             for (location *loc_ptr = server_ptr->first_loc->next; loc_ptr != NULL; loc_ptr = loc_ptr->next) {
+                // EXACT 模式，完全匹配
                 if (loc_ptr->rule == RULE_EXACT && strcmp(loc_ptr->pattern, req_loc) == 0) {
                     // found the location
-//                    printf("find:loc:%s\n", loc_ptr->pattern);
                     best_match_loc = loc_ptr;
-//                    return loc_ptr;
                     break;
                 }
+                // 默认模式，前缀匹配
                 if ((loc_ptr->rule == RULE_PREFIX || loc_ptr->rule == RULE_DEFAULT)
                     && strncmp(loc_ptr->pattern, req_loc, strlen(loc_ptr->pattern)) == 0) {
                     // found the location

@@ -47,12 +47,12 @@ void mlog(category *cat, FILE *f, server *ser, location *loc,
     char *t = NULL;
     get_time(&t);
     // 时间 级别 文件 函数 行号
-    fprintf(f, "[%s %s]%s %s-%ld", t, LOG_LEVEL_MAP[level], file, func, line);
+    fprintf(f, "[%s %s]%s %s-%ld ", t, LOG_LEVEL_MAP[level], file, func, line);
 //    free(t);
     if (loc != NULL) {
         // print context
         fprintf(f, "[server]listen:%d,servername:%s"
-                   "[location]pattern:%s", ser->listen, ser->server_name, loc->pattern);
+                   "[location]pattern:%s ", ser->listen, ser->server_name, loc->pattern);
     }
     va_list args;
     va_start(args, format);
