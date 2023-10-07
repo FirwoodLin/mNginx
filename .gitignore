@@ -54,6 +54,9 @@ dkms.conf
 # Clion Build File
 cmake-build-debug/
 
+# manually build
+build/
+
 # IDE conf
 .vscode/
 
